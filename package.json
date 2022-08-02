@@ -1,0 +1,14 @@
+{
+  "name": "monitoring-sdk",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node ./tests/index.js"
+  },
+  "author": "'",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.8.1"
+  }
+}

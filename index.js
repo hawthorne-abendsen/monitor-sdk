@@ -47,7 +47,7 @@ class MonitoringService {
         return;
       const statistics = this.statsDataSource();
       this.wsChannel.notify(JSON.stringify({
-        type: MessageTypes.STATS,
+        type: MessageTypes.LOG,
         data: statistics
       }));
     } catch (e) {

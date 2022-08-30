@@ -1,5 +1,5 @@
 const MessageTypes = {
-    STATS: 'stats',
+    LOG: 'log',
     RESULT: 'result'
 };
 

@@ -1,8 +1,15 @@
+const ErrorTypes = require('../error-types');
 const MonitoringService = require('../index');
 
+//get random true or false
+const randomBoolean = () => Math.random() >= 0.5;
+
 const statsCb = () => {
-    if (Date.now() % 2 === 0) {
-        return { alert: 'Some alert data' };
+    if (randomBoolean()) {
+        return {
+            error: 'Some alert data',
+            type: randomBoolean() ? ErrorTypes.ERROR : ErrorTypes.WARNING
+        };
     }
     return {
         stats: {

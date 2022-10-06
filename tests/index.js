@@ -1,5 +1,4 @@
-const ErrorTypes = require('../error-types')
-const MonitoringService = require('../index')
+const {MonitoringService, ErrorTypes} = require('../index')
 
 //get random true or false
 const randomBoolean = () => Math.random() >= 0.5
@@ -12,10 +11,8 @@ const statsCb = () => {
         }
     }
     return {
-        stats: {
-            requestsCount: 10,
-            loginsCount: 5
-        }
+        requestsCount: 10,
+        loginsCount: 5
     }
 }
 

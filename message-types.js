@@ -1,6 +1,7 @@
 const MessageTypes = {
     LOG: 'log',
-    RESULT: 'result'
+    RESULT: 'result',
+    SETTINGS: 'settings'
 }
 
 module.exports = MessageTypes

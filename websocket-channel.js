@@ -42,11 +42,15 @@ class WebSocketChannel {
 
     close(terminate = true) {
         this.__termination = terminate
+        this.__connectionTimeoutId && clearTimeout(this.__connectionTimeoutId)
         this.ws?.close()
     }
 
+    __connectionAttempts = 0
+
     __onOpen() {
         this.onOpen?.()
+        this.__resetConnectionAttempts()
     }
 
     __onMessage(message) {
@@ -71,15 +75,33 @@ class WebSocketChannel {
             this.ws.terminate()
         }
         this.ws = null
-        this.pingWorker = clearInterval(this.pingWorker)
         if (this.__termination)
             return
-        this.connect()
+        this.__incConnectionAttempts()
+        this.__connectionTimeoutId = setTimeout(() => this.connect(), this.__getTimeout())
     }
 
     __onError(error) {
         this.onError?.(error)
         console.log('error', error)
+    }
+
+    __incConnectionAttempts() {
+        //restrict count to avoid huge timeouts
+        if (this.__connectionAttempts < 5)
+            this.__connectionAttempts++
+    }
+
+    __resetConnectionAttempts() {
+        if (this.__connectionAttempts > 0)
+            this.__connectionAttempts = 0
+    }
+
+    __getTimeout() {
+        if (this.__connectionAttempts === 0)
+            return this.statsSyncTimeout
+        const timeout = Math.pow(2, this.__connectionAttempts) * 1000
+        return timeout
     }
 }
 

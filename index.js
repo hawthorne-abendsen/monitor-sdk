@@ -1,5 +1,6 @@
-const MessageTypes = require("./message-types")
-const WebSocketChannel = require("./websocket-channel")
+const MessageTypes = require('./message-types')
+const WebSocketChannel = require('./websocket-channel')
+const ErrorTypes = require('./error-types')
 
 class MonitoringService {
     constructor(monitoringServerUrl, serviceToken, statsDataSource, statsSyncTimeout = 1000) {
@@ -13,6 +14,7 @@ class MonitoringService {
         this.wsChannel = new WebSocketChannel({
             url: monitoringServerUrl,
             serviceToken,
+            onOpen: () => this.__onOpen(),
             onMessage: (message) => this.__onMessage(message),
             onClose: () => this.__onClose(),
             onError: () => this.__onError()
@@ -25,7 +27,7 @@ class MonitoringService {
         if (this.wsChannel.isConnected)
             return
         this.wsChannel.connect()
-        this.__runStatiscticsWorker()
+        this.__runStatiscticsWorker(1)
     }
 
     terminate() {
@@ -34,28 +36,64 @@ class MonitoringService {
         this.wsChannel.close()
     }
 
-    __runStatiscticsWorker() {
+    send(data, type = MessageTypes.LOG) {
+        if (!this.wsChannel.isConnected || !this.__timeoutId)
+            return
+        this.wsChannel.notify(JSON.stringify({
+            type,
+            data
+        }))
+    }
+
+    __runStatiscticsWorker(timeout = null) {
         this.__timeoutId = setTimeout(
             () => this.__sendStatisctics(),
-            this.statsSyncTimeout
+            timeout
         )
     }
 
+    __statsSendAttempts = 0
+
     __sendStatisctics() {
         try {
-            if (!this.wsChannel.isConnected || !this.__timeoutId)
+            if (!this.wsChannel.isConnected || !this.__timeoutId) {
+                this.__incSendAttempts()
                 return
+            }
             const statistics = this.statsDataSource()
-            this.wsChannel.notify(JSON.stringify({
-                type: MessageTypes.LOG,
-                data: statistics
-            }))
+            //if data is empty, do not send it
+            if (!statistics) {
+                this.__incSendAttempts()
+                return
+            }
+            this.send({stats: statistics}, MessageTypes.LOG)
+            this.__resetSendAttempts()
         } catch (e) {
             console.log('Error on log sending', e)
         } finally {
             if (this.__timeoutId)
-                this.__runStatiscticsWorker()
+                this.__runStatiscticsWorker(this.__getTimeout())
         }
+    }
+
+    __incSendAttempts() {
+        //restrict count to avoid huge timeouts
+        if (this.__statsSendAttempts < 5)
+            this.__statsSendAttempts++
+    }
+
+    __resetSendAttempts() {
+        if (this.__statsSendAttempts > 0)
+            this.__statsSendAttempts = 0
+    }
+
+    __getTimeout() {
+        if (this.__statsSendAttempts === 0)
+            return this.statsSyncTimeout
+        const timeout = Math.pow(2, this.__statsSendAttempts) * 1000
+        if (timeout > this.statsSyncTimeout)
+            return this.statsSyncTimeout
+        return timeout
     }
 
     __onMessage(message) {
@@ -68,6 +106,19 @@ class MonitoringService {
         }
     }
 
+    __onOpen() {
+        try {
+            this.wsChannel.notify(JSON.stringify({
+                type: MessageTypes.SETTINGS,
+                data: {
+                    serviceTimeout: this.statsSyncTimeout * 2
+                }
+            }))
+        } catch (e) {
+            console.log('Error on settings sending', e)
+        }
+    }
+
     __onClose() {
         console.log('Monitoring server connection closed')
     }
@@ -77,4 +128,4 @@ class MonitoringService {
     }
 }
 
-module.exports = MonitoringService
+module.exports = {MonitoringService, ErrorTypes}

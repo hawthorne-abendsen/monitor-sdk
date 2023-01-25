@@ -16,5 +16,5 @@ const statsCb = () => {
     }
 }
 
-const monitoringServerUrl = new MonitoringService('ws://localhost:9001', "exampleToken", statsCb, 5 * 1000)
+const monitoringServerUrl = new MonitoringService('ws://localhost:9001', "exampleToken", statsCb, 5 * 1000, true)
 monitoringServerUrl.connect()

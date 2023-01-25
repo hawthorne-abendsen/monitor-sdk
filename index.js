@@ -3,7 +3,7 @@ const WebSocketChannel = require('./websocket-channel')
 const ErrorTypes = require('./error-types')
 
 class MonitoringService {
-    constructor(monitoringServerUrl, serviceToken, statsDataSource, statsSyncTimeout = 1000) {
+    constructor(monitoringServerUrl, serviceToken, statsDataSource, statsSyncTimeout = 1000, verbose = false) {
         if (!monitoringServerUrl)
             throw new Error('monitoringServerUrl is required')
         if (!serviceToken)
@@ -17,10 +17,16 @@ class MonitoringService {
             onOpen: () => this.__onOpen(),
             onMessage: (message) => this.__onMessage(message),
             onClose: () => this.__onClose(),
-            onError: () => this.__onError()
+            onError: e => this.__onError(e)
         })
         this.statsDataSource = statsDataSource
         this.statsSyncTimeout = statsSyncTimeout
+        this.__verbose = verbose
+    }
+
+    __log(...args) {
+        if (this.__verbose)
+            console.log(...args)
     }
 
     connect() {
@@ -69,7 +75,7 @@ class MonitoringService {
             this.send({stats: statistics}, MessageTypes.LOG)
             this.__resetSendAttempts()
         } catch (e) {
-            console.log('Error on log sending', e)
+            this.__log('Error on log sending', e)
         } finally {
             if (this.__timeoutId)
                 this.__runStatiscticsWorker(this.__getTimeout())
@@ -99,10 +105,10 @@ class MonitoringService {
     __onMessage(message) {
         switch (message.type) {
             case MessageTypes.RESULT:
-                console.log(`${this.name} received result`, message.data)
+                this.__log(`${this.name} received result`, message.data)
                 break
             default:
-                console.log('unknown message type', message.type, message.data)
+                this.__log('unknown message type', message.type, message.data)
         }
     }
 
@@ -115,16 +121,21 @@ class MonitoringService {
                 }
             }))
         } catch (e) {
-            console.log('Error on settings sending', e)
+            this.__log('Error on settings sending', e)
         }
     }
 
     __onClose() {
-        console.log('Monitoring server connection closed')
+        this.__log('Monitoring server connection closed')
     }
 
-    __onError() {
-        console.error('Error on monitoring server connection')
+    __onError(error) {
+        if (error.code === 'ECONNREFUSED') {
+            if (error.connectionAttempts === 1)
+                console.error('Connection refused.')
+        } else {
+            console.error('Error occured. ', error)
+        }
     }
 }
 

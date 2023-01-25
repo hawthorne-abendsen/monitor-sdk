@@ -36,6 +36,10 @@ class WebSocketChannel {
         return this.ws?.readyState === WebSocket.OPEN
     }
 
+    get connectionAttempts() {
+        return this.__connectionAttempts
+    }
+
     notify(message) {
         this.ws.send(message)
     }
@@ -57,7 +61,7 @@ class WebSocketChannel {
         try {
             this.onMessage?.(message)
         } catch (e) {
-            console.error(e)
+            this.onError(e)
         }
     }
 
@@ -66,7 +70,6 @@ class WebSocketChannel {
     }
 
     __onPong(d) {
-        console.log(d)
     }
 
     __onClose() {
@@ -82,8 +85,11 @@ class WebSocketChannel {
     }
 
     __onError(error) {
-        this.onError?.(error)
-        console.log('error', error)
+        if (this.onError) {
+            if (error.code === 'ECONNREFUSED')
+                error.connectionAttempts = this.__connectionAttempts
+            this.onError(error)
+        }
     }
 
     __incConnectionAttempts() {
